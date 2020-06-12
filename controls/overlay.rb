@@ -628,4 +628,773 @@ control 'V-61721' do
   end
 end
 
+control 'V-61605' do
+  title "The DBMS must limit the number of consecutive failed logon attempts to
+  3."
+  desc "Anytime an authentication method is exposed,  to allow for the
+  utilization of an application, there is a risk that attempts will be made to
+  obtain unauthorized access.
+
+      To defeat these attempts, organizations define the number of times a user
+  account may consecutively fail a logon attempt. The organization also defines
+  the period of time in which these consecutive failed attempts may occur.
+
+      By limiting the number of failed logon attempts, the risk of unauthorized
+  system access via user password guessing, otherwise known as brute forcing, is
+  reduced. Limits are imposed by locking the account.
+
+      More recent brute force attacks make attempts over long periods of time to
+  circumvent intrusion detection systems and system account lockouts based
+  entirely on the number of failed logons that are typically reset after a
+  successful logon.
+
+      Note that user authentication and account management must be done via an
+  enterprise-wide mechanism whenever possible.  Examples of enterprise-level
+  authentication/access mechanisms include, but are not limited to, Active
+  Directory and LDAP.  This requirement applies to cases where it is necessary to
+  have accounts directly managed by Oracle.
+
+      Note also that a policy that places no limit on the length of the timeframe
+  (for counting consecutive invalid attempts) does satisfy this requirement.
+  "
+  impact 0.5
+  tag "gtitle": 'SRG-APP-000065-DB-000025'
+  tag "gid": 'V-61605'
+  tag "rid": 'SV-76095r2_rule'
+  tag "stig_id": 'O121-C2-005000'
+  tag "fix_id": 'F-67521r3_fix'
+  tag "cci": ['CCI-000044']
+  tag "nist": ['AC-7 a', 'Rev_4']
+  tag "false_negatives": nil
+  tag "false_positives": nil
+  tag "documentable": false
+  tag "mitigations": nil
+  tag "severity_override_guidance": false
+  tag "potential_impacts": nil
+  tag "third_party_tools": nil
+  tag "mitigation_controls": nil
+  tag "responsibility": nil
+  tag "ia_controls": nil
+  tag "check": "(This addresses both O121-C2-005000 and O121-C2-005200.)
+
+  The limit on the number of consecutive failed logon attempts is defined in the
+  profile assigned to a user.
+
+  To see what profile is assigned to a user, enter the following query:
+  SQL>SELECT profile FROM dba_users WHERE username = '&USERNAME'
+  This will return the profile name assigned to that user.
+
+  Now check the values assigned to the profile returned from the query above:
+  SQL>SELECT PROFILE, RESOURCE_NAME, LIMIT FROM DBA_PROFILES WHERE PROFILE LIKE
+  '&PROFILE_NAME'
+
+  Check the settings for FAILED_LOGIN_ATTEMPTS - this is the number of
+  consecutive failed logon attempts before locking the Oracle user account. If
+  the value is greater than 3, this is a finding."
+  tag "fix": "(This addresses both O121-C2-005000 and O121-C2-005200.)
+
+  Configure the DBMS settings to specify the maximum number of consecutive failed
+  logon attempts to 3 (or less):
+  ALTER PROFILE ORA_STIG_PROFILE LIMIT FAILED_LOGIN_ATTEMPTS 3;
+
+  (ORA_STIG_PROFILE is available in DBA_PROFILES, starting with Oracle 12.1.0.2.
+  Note: It remains necessary to create a customized replacement for the password
+  validation function, ORA12C_STRONG_VERIFY_FUNCTION, if relying on this
+  technique to verify password complexity.)"
+
+  sql = oracledb_session(user: input('user'), password: input('password'), host: input('host'), service: input('service'), sqlplus_bin: input('sqlplus_bin'))
+
+  query = %{
+    SELECT PROFILE, RESOURCE_NAME, LIMIT FROM DBA_PROFILES WHERE PROFILE =
+  '%<profile>s' AND RESOURCE_NAME = 'FAILED_LOGIN_ATTEMPTS'
+  }
+
+  user_profiles = sql.query('SELECT profile FROM dba_users;').column('profile').uniq
+
+  user_profiles.each do |profile|
+    next if profile == "RDSADMIN"
+    password_lock_time = sql.query(format(query, profile: profile)).column('limit')
+
+    describe "The oracle database limit for failed login attempts for profile: #{profile}" do
+      subject { password_lock_time.first }
+      it { should cmp <= input('failed_logon_attempts') }
+    end
+  end
+  if user_profiles.empty?
+    describe 'There are no user profiles, therefore this control is NA' do
+      skip 'There are no user profiles, therefore this control is NA'
+    end
+  end
+end
+
+control 'V-61719' do
+  title "The DBMS must support organizational requirements to enforce minimum
+  password length."
+  desc "Password complexity, or strength, is a measure of the effectiveness of
+  a password in resisting attempts at guessing and brute-force attacks.
+
+      To meet password policy requirements, passwords need to be changed at
+  specific policy-based intervals.
+
+      If the information system or application allows the user to consecutively
+  reuse their password when that password has exceeded its defined lifetime, the
+  end result is a password that is not changed as per policy requirements.
+
+      Weak passwords are a primary target for attack to gain unauthorized access
+  to databases and other systems. Where username/password is used for
+  identification and authentication to the database, requiring the use of strong
+  passwords can help prevent simple and more sophisticated methods for guessing
+  at passwords.
+
+      Note that user authentication and account management must be done via an
+  enterprise-wide mechanism whenever possible.  Examples of enterprise-level
+  authentication/access mechanisms include, but are not limited to, Active
+  Directory and LDAP. This requirement applies to cases where it is necessary to
+  have accounts directly managed by Oracle.
+  "
+  impact 0.5
+  tag "gtitle": 'SRG-APP-000164-DB-000082'
+  tag "gid": 'V-61719'
+  tag "rid": 'SV-76209r1_rule'
+  tag "stig_id": 'O121-C2-013900'
+  tag "fix_id": 'F-67635r1_fix'
+  tag "cci": ['CCI-000205']
+  tag "nist": ['IA-5 (1) (a)', 'Rev_4']
+  tag "false_negatives": nil
+  tag "false_positives": nil
+  tag "documentable": false
+  tag "mitigations": nil
+  tag "severity_override_guidance": false
+  tag "potential_impacts": nil
+  tag "third_party_tools": nil
+  tag "mitigation_controls": nil
+  tag "responsibility": nil
+  tag "ia_controls": nil
+  tag "check": "If all user accounts are authenticated by the OS or an
+  enterprise-level authentication/access mechanism, and not by Oracle, this is
+  not a finding.
+
+  For each profile that can be applied to accounts where authentication is under
+  Oracle's control, determine the password verification function, if any, that is
+  in use:
+
+  SELECT * FROM SYS.DBA_PROFILES
+  WHERE RESOURCE_NAME = 'PASSWORD_VERIFY_FUNCTION'
+  [AND PROFILE NOT IN (<list of non-applicable profiles>)]
+  ORDER BY PROFILE;
+
+  Bearing in mind that a profile can inherit from another profile, and the root
+  profile is called DEFAULT, determine the name of the password verification
+  function effective for each profile.
+
+  If, for any profile, the function name is null, this is a finding.
+
+  For each password verification function, examine its source code.
+
+  If it does not enforce the DoD-defined minimum length (15 unless otherwise
+  specified), this is a finding."
+  tag "fix": "If all user accounts are authenticated by the OS or an
+  enterprise-level authentication/access mechanism, and not by Oracle, no fix to
+  the DBMS is required.
+
+  If any user accounts are managed by Oracle:  Develop, test and implement a
+  password verification function that enforces DoD requirements.
+
+  (Oracle supplies a sample function called ORA12C_STRONG_VERIFY_FUNCTION, in the
+  script file
+  <oracle_home>/RDBMS/ADMIN/utlpwdmg.sql.  This can be used as the starting point
+  for a customized function.)"
+
+  sql = oracledb_session(user: input('user'), password: input('password'), host: input('host'), service: input('service'), sqlplus_bin: input('sqlplus_bin'))
+
+  query = %{
+    SELECT PROFILE, RESOURCE_NAME, LIMIT FROM DBA_PROFILES WHERE PROFILE =
+  '%<profile>s' AND RESOURCE_NAME = 'PASSWORD_VERIFY_FUNCTION'
+  }
+
+  user_profiles = sql.query('SELECT profile FROM dba_users;').column('profile').uniq
+
+  user_profiles.each do |profile|
+    next if profile == "RDSADMIN"
+    password_verify_function = sql.query(format(query, profile: profile)).column('limit')
+
+    describe "The oracle database account password verify function for profile: #{profile}" do
+      subject { password_verify_function }
+      it { should_not eq ['NULL'] }
+    end
+  end
+  if user_profiles.empty?
+    describe 'There are no user profiles, therefore this control is NA' do
+      skip 'There are no user profiles, therefore this control is NA'
+    end
+  end
+end
+
+control 'V-61723' do
+  title "The DBMS must support organizational requirements to enforce password
+  complexity by the number of upper-case characters used."
+  desc "Password complexity or strength is a measure of the effectiveness of a
+  password in resisting attempts at guessing and brute-force attacks.
+
+      Password complexity is one factor of several that determine how long it
+  takes to crack a password. The more complex the password is, the greater the
+  number of possible combinations that need to be tested before the password is
+  compromised.
+
+      Use of a complex password helps to increase the time and resources required
+  to compromise the password.
+
+      Note that user authentication and account management must be done via an
+  enterprise-wide mechanism whenever possible.  Examples of enterprise-level
+  authentication/access mechanisms include, but are not limited to, Active
+  Directory and LDAP  This requirement applies to cases where it is necessary to
+  have accounts directly managed by Oracle.
+  "
+  impact 0.5
+  tag "gtitle": 'SRG-APP-000166-DB-000070'
+  tag "gid": 'V-61723'
+  tag "rid": 'SV-76213r1_rule'
+  tag "stig_id": 'O121-C2-014100'
+  tag "fix_id": 'F-67639r1_fix'
+  tag "cci": ['CCI-000192']
+  tag "nist": ['IA-5 (1) (a)', 'Rev_4']
+  tag "false_negatives": nil
+  tag "false_positives": nil
+  tag "documentable": false
+  tag "mitigations": nil
+  tag "severity_override_guidance": false
+  tag "potential_impacts": nil
+  tag "third_party_tools": nil
+  tag "mitigation_controls": nil
+  tag "responsibility": nil
+  tag "ia_controls": nil
+  tag "check": "If all user accounts are managed and authenticated by the OS or
+  an enterprise-level authentication/access mechanism, and not by Oracle, this is
+  not a finding.
+
+  For each profile that can be applied to accounts where authentication is under
+  Oracle's control, determine the password verification function, if any, that is
+  in use:
+
+  SELECT * FROM SYS.DBA_PROFILES
+  WHERE RESOURCE_NAME = 'PASSWORD_VERIFY_FUNCTION'
+  [AND PROFILE NOT IN (<list of non-applicable profiles>)]
+  ORDER BY PROFILE;
+  Bearing in mind that a profile can inherit from another profile, and the root
+  profile is called DEFAULT, determine the name of the password verification
+  function effective for each profile.
+
+  If, for any profile, the function name is null, this is a finding.
+
+  For each password verification function, examine its source code.  If it does
+  not enforce the organization-defined minimum number of upper-case characters (1
+  unless otherwise specified), this is a finding."
+  tag "fix": "If all user accounts are authenticated by the OS or an
+  enterprise-level authentication/access mechanism, and not by Oracle, no fix to
+  the DBMS is required.
+
+  If any user accounts are managed by Oracle:  Develop, test and implement a
+  password verification function that enforces DoD requirements.
+
+  (Oracle supplies a sample function called ORA12C_STRONG_VERIFY_FUNCTION, in the
+  script file
+  <oracle_home>/RDBMS/ADMIN/utlpwdmg.sql.  This can be used as the starting point
+  for a customized function.)"
+
+  sql = oracledb_session(user: input('user'), password: input('password'), host: input('host'), service: input('service'), sqlplus_bin: input('sqlplus_bin'))
+
+  query = %{
+    SELECT PROFILE, RESOURCE_NAME, LIMIT FROM DBA_PROFILES WHERE PROFILE =
+  '%<profile>s' AND RESOURCE_NAME = 'PASSWORD_VERIFY_FUNCTION'
+  }
+
+  user_profiles = sql.query('SELECT profile FROM dba_users;').column('profile').uniq
+
+  user_profiles.each do |profile|
+    next if profile == "RDSADMIN"
+    password_verify_function = sql.query(format(query, profile: profile)).column('limit')
+
+    describe "The oracle database account password verify function for profile: #{profile}" do
+      subject { password_verify_function }
+      it { should_not eq ['NULL'] }
+    end
+  end
+  if user_profiles.empty?
+    describe 'There are no user profiles, therefore this control is NA' do
+      skip 'There are no user profiles, therefore this control is NA'
+    end
+  end
+end
+
+control 'V-61725' do
+  title "The DBMS must support organizational requirements to enforce password
+  complexity by the number of lower-case characters used."
+  desc "Password complexity or strength is a measure of the effectiveness of a
+  password in resisting attempts at guessing and brute-force attacks.
+
+      Password complexity is one factor of several that determine how long it
+  takes to crack a password. The more complex the password is, the greater the
+  number of possible combinations that need to be tested before the password is
+  compromised.
+
+      Use of a complex password helps to increase the time and resources required
+  to compromise the password.
+
+      Note that user authentication and account management must be done via an
+  enterprise-wide mechanism whenever possible.  Examples of enterprise-level
+  authentication/access mechanisms include, but are not limited to, Active
+  Directory and LDAP. This requirement applies to cases where it is necessary to
+  have accounts directly managed by Oracle.
+  "
+  impact 0.5
+  tag "gtitle": 'SRG-APP-000167-DB-000071'
+  tag "gid": 'V-61725'
+  tag "rid": 'SV-76215r1_rule'
+  tag "stig_id": 'O121-C2-014200'
+  tag "fix_id": 'F-67641r1_fix'
+  tag "cci": ['CCI-000193']
+  tag "nist": ['IA-5 (1) (a)', 'Rev_4']
+  tag "false_negatives": nil
+  tag "false_positives": nil
+  tag "documentable": false
+  tag "mitigations": nil
+  tag "severity_override_guidance": false
+  tag "potential_impacts": nil
+  tag "third_party_tools": nil
+  tag "mitigation_controls": nil
+  tag "responsibility": nil
+  tag "ia_controls": nil
+  tag "check": "If all user accounts are managed and authenticated by the OS or
+  an enterprise-level authentication/access mechanism, and not by Oracle, this is
+  not a finding.
+
+  For each profile that can be applied to accounts where authentication is under
+  Oracle's control, determine the password verification function, if any, that is
+  in use:
+
+  SELECT * FROM SYS.DBA_PROFILES
+  WHERE RESOURCE_NAME = 'PASSWORD_VERIFY_FUNCTION'
+  [AND PROFILE NOT IN (<list of non-applicable profiles>)]
+  ORDER BY PROFILE;
+
+  Bearing in mind that a profile can inherit from another profile, and the root
+  profile is called DEFAULT, determine the name of the password verification
+  function effective for each profile.
+
+  If, for any profile, the function name is null, this is a finding.
+
+  For each password verification function, examine its source code.
+
+  If it does not enforce the organization-defined minimum number of lower-case
+  characters (1 unless otherwise specified), this is a finding."
+  tag "fix": "If all user accounts are authenticated by the OS or an
+  enterprise-level authentication/access mechanism, and not by Oracle, no fix to
+  the DBMS is required.
+
+  If any user accounts are managed by Oracle:  Develop, test and implement a
+  password verification function that enforces DoD requirements.
+
+  (Oracle supplies a sample function called ORA12C_STRONG_VERIFY_FUNCTION, in the
+  script file
+  <oracle_home>/RDBMS/ADMIN/utlpwdmg.sql.  This can be used as the starting point
+  for a customized function.)"
+
+  sql = oracledb_session(user: input('user'), password: input('password'), host: input('host'), service: input('service'), sqlplus_bin: input('sqlplus_bin'))
+
+  query = %{
+    SELECT PROFILE, RESOURCE_NAME, LIMIT FROM DBA_PROFILES WHERE PROFILE =
+  '%<profile>s' AND RESOURCE_NAME = 'PASSWORD_VERIFY_FUNCTION'
+  }
+
+  user_profiles = sql.query('SELECT profile FROM dba_users;').column('profile').uniq
+
+  user_profiles.each do |profile|
+    next if profile == "RDSADMIN"
+    password_verify_function = sql.query(format(query, profile: profile)).column('limit')
+
+    describe "The oracle database account password verify function for profile: #{profile}" do
+      subject { password_verify_function }
+      it { should_not eq ['NULL'] }
+    end
+  end
+  if user_profiles.empty?
+    describe 'There are no user profiles, therefore this control is NA' do
+      skip 'There are no user profiles, therefore this control is NA'
+    end
+  end
+end
+
+control 'V-61727' do
+  title "The DBMS must support organizational requirements to enforce password
+  complexity by the number of numeric characters used."
+  desc "Password complexity or strength is a measure of the effectiveness of a
+  password in resisting attempts at guessing and brute-force attacks.
+
+      Password complexity is one factor of several that determine how long it
+  takes to crack a password. The more complex the password is, the greater the
+  number of possible combinations that need to be tested before the password is
+  compromised.
+
+      Use of a complex password helps to increase the time and resources required
+  to compromise the password.
+
+      Note that user authentication and account management must be done via an
+  enterprise-wide mechanism whenever possible.  Examples of enterprise-level
+  authentication/access mechanisms include, but are not limited to, Active
+  Directory and LDAP  This requirement applies to cases where it is necessary to
+  have accounts directly managed by Oracle.
+  "
+  impact 0.5
+  tag "gtitle": 'SRG-APP-000168-DB-000072'
+  tag "gid": 'V-61727'
+  tag "rid": 'SV-76217r1_rule'
+  tag "stig_id": 'O121-C2-014300'
+  tag "fix_id": 'F-67643r1_fix'
+  tag "cci": ['CCI-000194']
+  tag "nist": ['IA-5 (1) (a)', 'Rev_4']
+  tag "false_negatives": nil
+  tag "false_positives": nil
+  tag "documentable": false
+  tag "mitigations": nil
+  tag "severity_override_guidance": false
+  tag "potential_impacts": nil
+  tag "third_party_tools": nil
+  tag "mitigation_controls": nil
+  tag "responsibility": nil
+  tag "ia_controls": nil
+  tag "check": "If all user accounts are managed and authenticated by the OS or
+  an enterprise-level authentication/access mechanism, and not by Oracle, this is
+  not a finding.
+
+  For each profile that can be applied to accounts where authentication is under
+  Oracle's control, determine the password verification function, if any, that is
+  in use:
+
+  SELECT * FROM SYS.DBA_PROFILES
+  WHERE RESOURCE_NAME = 'PASSWORD_VERIFY_FUNCTION'
+  [AND PROFILE NOT IN (<list of non-applicable profiles>)]
+  ORDER BY PROFILE;
+  Bearing in mind that a profile can inherit from another profile, and the root
+  profile is called DEFAULT, determine the name of the password verification
+  function effective for each profile.
+
+  If, for any profile, the function name is null, this is a finding.
+
+  For each password verification function, examine its source code.
+
+  If it does not enforce the organization-defined minimum number of numeric
+  characters (1 unless otherwise specified), this is a finding."
+  tag "fix": "If all user accounts are authenticated by the OS or an
+  enterprise-level authentication/access mechanism, and not by Oracle, no fix to
+  the DBMS is required.
+
+  If any user accounts are managed by Oracle:  Develop, test and implement a
+  password verification function that enforces DoD requirements.
+
+  (Oracle supplies a sample function called ORA12C_STRONG_VERIFY_FUNCTION, in the
+  script file
+  <oracle_home>/RDBMS/ADMIN/utlpwdmg.sql.  This can be used as the starting point
+  for a customized function.)"
+
+  sql = oracledb_session(user: input('user'), password: input('password'), host: input('host'), service: input('service'), sqlplus_bin: input('sqlplus_bin'))
+
+  query = %{
+    SELECT PROFILE, RESOURCE_NAME, LIMIT FROM DBA_PROFILES WHERE PROFILE =
+  '%<profile>s' AND RESOURCE_NAME = 'PASSWORD_VERIFY_FUNCTION'
+  }
+
+  user_profiles = sql.query('SELECT profile FROM dba_users;').column('profile').uniq
+
+  user_profiles.each do |profile|
+    next if profile == "RDSADMIN"
+    password_verify_function = sql.query(format(query, profile: profile)).column('limit')
+
+    describe "The oracle database account password verify function for profile: #{profile}" do
+      subject { password_verify_function }
+      it { should_not eq ['NULL'] }
+    end
+  end
+  if user_profiles.empty?
+    describe 'There are no user profiles, therefore this control is NA' do
+      skip 'There are no user profiles, therefore this control is NA'
+    end
+  end
+end
+
+control 'V-61729' do
+  title "The DBMS must support organizational requirements to enforce password
+  complexity by the number of special characters used."
+  desc "Password complexity or strength is a measure of the effectiveness of a
+  password in resisting attempts at guessing and brute-force attacks.
+
+      Password complexity is one factor of several that determine how long it
+  takes to crack a password. The more complex the password is, the greater the
+  number of possible combinations that need to be tested before the password is
+  compromised.
+
+      Use of a complex password helps to increase the time and resources required
+  to compromise the password.
+
+      Note that user authentication and account management must be done via an
+  enterprise-wide mechanism whenever possible.  Examples of enterprise-level
+  authentication/access mechanisms include, but are not limited to, Active
+  Directory and LDAP  This requirement applies to cases where it is necessary to
+  have accounts directly managed by Oracle.
+  "
+  impact 0.5
+  tag "gtitle": 'SRG-APP-000169-DB-000176'
+  tag "gid": 'V-61729'
+  tag "rid": 'SV-76219r1_rule'
+  tag "stig_id": 'O121-C2-014400'
+  tag "fix_id": 'F-67645r1_fix'
+  tag "cci": ['CCI-001619']
+  tag "nist": ['IA-5 (1) (a)', 'Rev_4']
+  tag "false_negatives": nil
+  tag "false_positives": nil
+  tag "documentable": false
+  tag "mitigations": nil
+  tag "severity_override_guidance": false
+  tag "potential_impacts": nil
+  tag "third_party_tools": nil
+  tag "mitigation_controls": nil
+  tag "responsibility": nil
+  tag "ia_controls": nil
+  tag "check": "If all user accounts are managed and authenticated by the OS or
+  an enterprise-level authentication/access mechanism, and not by Oracle, this is
+  not a finding.
+
+  For each profile that can be applied to accounts where authentication is under
+  Oracle's control, determine the password verification function, if any, that is
+  in use:
+
+  SELECT * FROM SYS.DBA_PROFILES
+  WHERE RESOURCE_NAME = 'PASSWORD_VERIFY_FUNCTION'
+  [AND PROFILE NOT IN (<list of non-applicable profiles>)]
+  ORDER BY PROFILE;
+  Bearing in mind that a profile can inherit from another profile, and the root
+  profile is called DEFAULT, determine the name of the password verification
+  function effective for each profile.
+
+  If, for any profile, the function name is null, this is a finding.
+
+  For each password verification function, examine its source code.
+
+  If it does not enforce the organization-defined minimum number of special
+  characters (1 unless otherwise specified), this is a finding."
+  tag "fix": "If all user accounts are authenticated by the OS or an
+  enterprise-level authentication/access mechanism, and not by Oracle, no fix to
+  the DBMS is required.
+
+  If any user accounts are managed by Oracle:  Develop, test and implement a
+  password verification function that enforces DoD requirements.
+
+  (Oracle supplies a sample function called ORA12C_STRONG_VERIFY_FUNCTION, in the
+  script file
+  <oracle_home>/RDBMS/ADMIN/utlpwdmg.sql.  This can be used as the starting point
+  for a customized function.)"
+
+  sql = oracledb_session(user: input('user'), password: input('password'), host: input('host'), service: input('service'), sqlplus_bin: input('sqlplus_bin'))
+
+  query = %{
+    SELECT PROFILE, RESOURCE_NAME, LIMIT FROM DBA_PROFILES WHERE PROFILE =
+  '%<profile>s' AND RESOURCE_NAME = 'PASSWORD_VERIFY_FUNCTION'
+  }
+
+  user_profiles = sql.query('SELECT profile FROM dba_users;').column('profile').uniq
+
+  user_profiles.each do |profile|
+    next if profile == "RDSADMIN"
+    password_verify_function = sql.query(format(query, profile: profile)).column('limit')
+
+    describe "The oracle database account password verify function for profile: #{profile}" do
+      subject { password_verify_function }
+      it { should_not eq ['NULL'] }
+    end
+  end
+  if user_profiles.empty?
+    describe 'There are no user profiles, therefore this control is NA' do
+      skip 'There are no user profiles, therefore this control is NA'
+    end
+  end
+end
+
+control 'V-61731' do
+  title "The DBMS must support organizational requirements to enforce the
+  number of characters that get changed when passwords are changed."
+  desc  "Passwords need to be changed at specific policy-based intervals.
+
+    If the information system or application allows the user to consecutively
+  reuse extensive portions of their password when they change their password, the
+  end result is a password that has not had enough elements changed to meet the
+  policy requirements.
+
+      Changing passwords frequently can thwart password-guessing attempts or
+  re-establish protection of a compromised DBMS account. Minor changes to
+  passwords may not accomplish this since password guessing may be able to
+  continue to build on previous guesses, or the new password may be easily
+  guessed using the old password.
+
+      Note that user authentication and account management must be done via an
+  enterprise-wide mechanism whenever possible.  Examples of enterprise-level
+  authentication/access mechanisms include, but are not limited to, Active
+  Directory and LDAP  This requirement applies to cases where it is necessary to
+  have accounts directly managed by Oracle.
+  "
+  impact 0.5
+  tag "gtitle": 'SRG-APP-000170-DB-000073'
+  tag "gid": 'V-61731'
+  tag "rid": 'SV-76221r1_rule'
+  tag "stig_id": 'O121-C2-014500'
+  tag "fix_id": 'F-67647r1_fix'
+  tag "cci": ['CCI-000195']
+  tag "nist": ['IA-5 (1) (b)', 'Rev_4']
+  tag "false_negatives": nil
+  tag "false_positives": nil
+  tag "documentable": false
+  tag "mitigations": nil
+  tag "severity_override_guidance": false
+  tag "potential_impacts": nil
+  tag "third_party_tools": nil
+  tag "mitigation_controls": nil
+  tag "responsibility": nil
+  tag "ia_controls": nil
+  tag "check": "If all user accounts are managed and authenticated by the OS or
+  an enterprise-level authentication/access mechanism, and not by Oracle, this is
+  not a finding.
+
+  For each profile that can be applied to accounts where authentication is under
+  Oracle's control, determine the password verification function, if any, that is
+  in use:
+
+  SELECT * FROM SYS.DBA_PROFILES
+  WHERE RESOURCE_NAME = 'PASSWORD_VERIFY_FUNCTION'
+  [AND PROFILE NOT IN (<list of non-applicable profiles>)] ORDER BY PROFILE;
+
+  Bearing in mind that a profile can inherit from another profile, and the root
+  profile is called DEFAULT, determine the name of the password verification
+  function effective for each profile.
+
+  If, for any profile, the function name is null, this is a finding.
+
+  For each password verification function, examine its source code.
+
+  If it does not enforce the organization-defined minimum number of characters by
+  which the password must differ from the previous password (eight of the
+  characters unless otherwise specified), this is a finding."
+  tag "fix": "If any user accounts are managed by Oracle:  Develop, test and
+  implement a password verification function that enforces DoD requirements.
+
+  (Oracle supplies a sample function called ORA12C_STRONG_VERIFY_FUNCTION, in the
+  script file <oracle_home>/RDBMS/ADMIN/utlpwdmg.sql.  This can be used as the
+  starting point for a customized function.)"
+
+  sql = oracledb_session(user: input('user'), password: input('password'), host: input('host'), service: input('service'), sqlplus_bin: input('sqlplus_bin'))
+
+  query = %{
+    SELECT PROFILE, RESOURCE_NAME, LIMIT FROM DBA_PROFILES WHERE PROFILE =
+  '%<profile>s' AND RESOURCE_NAME = 'PASSWORD_VERIFY_FUNCTION'
+  }
+
+  user_profiles = sql.query('SELECT profile FROM dba_users;').column('profile').uniq
+
+  user_profiles.each do |profile|
+    next if profile == "RDSADMIN"
+    password_verify_function = sql.query(format(query, profile: profile)).column('limit')
+
+    describe "The oracle database account password verify function for profile: #{profile}" do
+      subject { password_verify_function }
+      it { should_not eq ['NULL'] }
+    end
+  end
+  if user_profiles.empty?
+    describe 'There are no user profiles, therefore this control is NA' do
+      skip 'There are no user profiles, therefore this control is NA'
+    end
+  end
+end
+
+control 'V-61757' do
+  title "The DBMS must terminate the network connection associated with a
+  communications session at the end of the session or 15 minutes of inactivity."
+  desc "Non-local maintenance and diagnostic activities are those activities
+  conducted by individuals communicating through a network, either an external
+  network (e.g., the Internet) or an internal network.
+
+      The act of managing systems and applications includes the ability to access
+  sensitive application information, such as system configuration details,
+  diagnostic information, user information, and potentially sensitive application
+  data.
+
+      When applications provide a remote management capability inherent to the
+  application, the application needs to ensure all sessions and network
+  connections are terminated when non-local maintenance is completed.
+
+      When network connections are left open after the database session has
+  closed, the network session is open to session hijacking.
+
+      The Oracle Listener inherently meets most of this SRG requirement.  When a
+  user logs off, or times out, or encounters an unrecoverable network fault, the
+  Oracle Listener terminates all sessions and network connections.  The remaining
+  aspect of the requirement, the timeout because of inactivity, is configurable.
+  "
+  impact 0.5
+  tag "gtitle": 'SRG-APP-000190-DB-000137'
+  tag "gid": 'V-61757'
+  tag "rid": 'SV-76247r2_rule'
+  tag "stig_id": 'O121-C2-016500'
+  tag "fix_id": 'F-67673r2_fix'
+  tag "cci": ['CCI-001133']
+  tag "nist": ['SC-10', 'Rev_4']
+  tag "false_negatives": nil
+  tag "false_positives": nil
+  tag "documentable": false
+  tag "mitigations": nil
+  tag "severity_override_guidance": false
+  tag "potential_impacts": nil
+  tag "third_party_tools": nil
+  tag "mitigation_controls": nil
+  tag "responsibility": nil
+  tag "ia_controls": nil
+  tag "check": "Review DBMS settings, OS settings, and vendor documentation to
+  verify network connections are terminated when a database communications
+  session is ended or after 15 minutes of inactivity.
+
+  If the network connection is not terminated, this is a finding.
+
+  The defined duration for these timeouts 15 minutes, except to fulfill
+  documented and validated mission requirements."
+  tag "fix": "Configure DBMS and/or OS settings to disconnect network sessions
+  when database communication sessions have ended or after the DoD-defined period
+  of inactivity.
+
+  To configure this in Oracle, modify each relevant profile.  The resource name
+  is IDLE_TIME, which is expressed in minutes.  Using PPPPPP as an example of a
+  profile, set the timeout to 15 minutes with:
+  ALTER PROFILE PPPPPP LIMIT IDLE_TIME 15;"
+
+  sql = oracledb_session(user: input('user'), password: input('password'), host: input('host'), service: input('service'), sqlplus_bin: input('sqlplus_bin'))
+
+  query = %{
+    SELECT PROFILE, RESOURCE_NAME, LIMIT FROM DBA_PROFILES WHERE PROFILE =
+  '%<profile>s' AND RESOURCE_NAME = 'IDLE_TIME'
+  }
+
+  user_profiles = sql.query('SELECT profile FROM dba_users;').column('profile').uniq
+
+  user_profiles.each do |profile|
+    next if profile == "RDSADMIN"
+    idle_time = sql.query(format(query, profile: profile)).column('limit')
+
+    describe "The oracle database idele time for profile: #{profile}" do
+      subject { idle_time }
+      it { should cmp <= 15 }
+    end
+  end
+  if user_profiles.empty?
+    describe 'There are no user profiles, therefore this control is NA' do
+      skip 'There are no user profiles, therefore this control is NA'
+    end
+  end
+end
+
 end
