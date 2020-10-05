@@ -1397,4 +1397,242 @@ control 'V-61757' do
   end
 end
 
+control 'V-61541' do
+  title 'DBMS default accounts must be assigned custom passwords.'
+  desc  "Password maximum lifetime is  the maximum period of time, (typically
+in days) a user's password may be in effect before the user is forced to change
+it.
+    Passwords need to be changed at specific policy-based intervals as per
+policy. Any password, no matter how complex, can eventually be cracked.
+    One method of minimizing this risk is to use complex passwords and
+periodically change them. If the application does not limit the lifetime of
+passwords and force users to change their passwords, there is the risk that the
+system and/or application passwords could be compromised.
+    DBMS default passwords provide a commonly known and exploited means for
+unauthorized access to database installations.
+  "
+  impact 0.7
+  tag "gtitle": 'SRG-APP-000174-DB-000078'
+  tag "gid": 'V-61541'
+  tag "rid": 'SV-76031r1_rule'
+  tag "stig_id": 'O121-C1-015000'
+  tag "fix_id": 'F-67457r1_fix'
+  tag "cci": ['CCI-000199']
+  tag "nist": ['IA-5 (1) (d)', 'Rev_4']
+  tag "false_negatives": nil
+  tag "false_positives": nil
+  tag "documentable": false
+  tag "mitigations": nil
+  tag "severity_override_guidance": false
+  tag "potential_impacts": nil
+  tag "third_party_tools": nil
+  tag "mitigation_controls": nil
+  tag "responsibility": nil
+  tag "ia_controls": nil
+  tag "check": "Use this query to identify the Oracle-supplied accounts that
+  still have their default passwords:
+  SELECT * FROM SYS.DBA_USERS_WITH_DEFPWD;
+  If any accounts other than XS$NULL are listed, this is a finding.
+  (XS$NULL is an internal account that represents the absence of a user in a
+  session. Because XS$NULL is not a user, this account can only be accessed by
+  the Oracle Database instance. XS$NULL has no privileges and no one can
+  authenticate as XS$NULL, nor can authentication credentials ever be assigned to
+  XS$NULL.)"
+  tag "fix": "Change passwords for DBMS accounts to non-default values. Where
+  necessary, unlock or enable accounts to change the password, and then return
+  the account to disabled or locked status."
+
+  sql = oracledb_session(user: input('user'), password: input('password'), host: input('host'), service: input('service'), sqlplus_bin: input('sqlplus_bin'))
+
+  sys_dba_users_with_defpwd = sql.query(' SELECT username FROM SYS.DBA_USERS_WITH_DEFPWD;').column('username').uniq
+
+  describe.one do
+    sys_dba_users_with_defpwd.each do |user|
+      next if user == "RDSADMIN"
+      describe "The oracle system database user: #{user} with a default password" do
+        subject { user }
+        it { should cmp 'XS$NULL' }
+      end
+    end
+
+    describe sys_dba_users_with_defpwd do
+      it { should be_empty }
+    end
+  end
+end
+
+control 'V-61421' do
+  title "The Oracle WITH GRANT OPTION privilege must not be granted to non-DBA
+  or non-Application administrator user accounts."
+  desc "An account permission to grant privileges within the database is an
+  administrative function. Minimizing the number and privileges of administrative
+  accounts reduces the chances of privileged account exploitation. Application
+  user accounts must never require WITH GRANT OPTION privileges since, by
+  definition, they require only privileges to execute procedures or view / edit
+  data."
+  impact 0.5
+  tag "gtitle": 'SRG-APP-000516-DB-999900'
+  tag "gid": 'V-61421'
+  tag "rid": 'SV-75911r2_rule'
+  tag "stig_id": 'O121-BP-021700'
+  tag "fix_id": 'F-67337r1_fix'
+  tag "cci": ['CCI-000366']
+  tag "nist": ['CM-6 b', 'Rev_4']
+  tag "false_negatives": nil
+  tag "false_positives": nil
+  tag "documentable": false
+  tag "mitigations": nil
+  tag "severity_override_guidance": false
+  tag "potential_impacts": nil
+  tag "third_party_tools": nil
+  tag "mitigation_controls": nil
+  tag "responsibility": nil
+  tag "ia_controls": nil
+  tag "check": "Execute the query:
+  select grantee||': '||owner||'.'||table_name
+  from dba_tab_privs
+  where grantable = 'YES'
+  and grantee not in (select distinct owner from dba_objects)
+  and grantee not in (select grantee from dba_role_privs where granted_role =
+  'DBA')
+  order by grantee;
+  If any accounts are listed, this is a finding."
+  tag "fix": "Revoke privileges granted the WITH GRANT OPTION from non-DBA and
+  accounts that do not own application objects.
+  Re-grant privileges without specifying WITH GRANT OPTION."
+
+  sql = oracledb_session(user: input('user'), password: input('password'), host: input('host'), service: input('service'), sqlplus_bin: input('sqlplus_bin'))
+
+  describe sql.query("select grantee||': '||owner||'.'||table_name
+  from dba_tab_privs
+  where grantable = 'YES'
+  and grantee not in (select distinct owner from dba_objects)
+  and grantee not in (select grantee from dba_role_privs where granted_role =
+  'DBA')
+  and owner not in ('RDSADMIN')
+  order by grantee;").row(0).column("grantee||': '||owner||'.'||table_name") do
+    its('value') { should be_empty }
+  end
+end
+
+
+control 'V-61591' do
+  title "Administrative privileges must be assigned to database accounts via
+  database roles."
+  desc "Applications employ the concept of least privilege for specific duties
+  and information systems (including specific functions, ports, protocols, and
+  services). The concept of least privilege is also applied to information system
+  processes, ensuring that the processes operate at privilege levels no higher
+  than necessary to accomplish required organizational missions and/or functions.
+  Organizations consider the creation of additional processes, roles, and
+  information system accounts as necessary to achieve least privilege.
+  Organizations also apply least privilege concepts to the design, development,
+  implementation, and operations of information systems.
+      Privileges granted outside the context of the application user job function
+  are more likely to go unmanaged or without oversight for authorization.
+  Maintenance of privileges using roles defined for discrete job functions offers
+  improved oversight of application user privilege assignments and helps to
+  protect against unauthorized privilege assignment.
+  "
+  impact 0.5
+  tag "gtitle": 'SRG-APP-000062-DB-000034'
+  tag "gid": 'V-61591'
+  tag "rid": 'SV-76081r3_rule'
+  tag "stig_id": 'O121-C2-004000'
+  tag "fix_id": 'F-67507r1_fix'
+  tag "cci": ['CCI-000366', 'CCI-002220']
+  tag "nist": ['CM-6 b', 'Rev_4']
+  tag "nist": ['AC-5 c', 'Rev_4']
+  tag "false_negatives": nil
+  tag "false_positives": nil
+  tag "documentable": false
+  tag "mitigations": nil
+  tag "severity_override_guidance": false
+  tag "potential_impacts": nil
+  tag "third_party_tools": nil
+  tag "mitigation_controls": nil
+  tag "responsibility": nil
+  tag "ia_controls": nil
+  tag "check": "Review accounts for direct assignment of administrative
+  privileges.  Connected as SYSDBA, run the query:
+  SELECT grantee, privilege
+  FROM   dba_sys_privs
+  WHERE  grantee IN
+  (
+  SELECT username
+  FROM   dba_users
+  WHERE  username NOT IN
+  (
+  'XDB', 'SYSTEM', 'SYS', 'LBACSYS',
+  'DVSYS', 'DVF', 'SYSMAN_RO',
+  'SYSMAN_BIPLATFORM', 'SYSMAN_MDS',
+  'SYSMAN_OPSS', 'SYSMAN_STB', 'DBSNMP',
+  'SYSMAN', 'APEX_040200', 'WMSYS',
+  'SYSDG', 'SYSBACKUP', 'SPATIAL_WFS_ADMIN_USR',
+  'SPATIAL_CSW_ADMIN_US', 'GSMCATUSER',
+  'OLAPSYS', 'SI_INFORMTN_SCHEMA',
+  'OUTLN', 'ORDSYS', 'ORDDATA', 'OJVMSYS',
+  'ORACLE_OCM', 'MDSYS', 'ORDPLUGINS',
+  'GSMADMIN_INTERNAL', 'MDDATA', 'FLOWS_FILES',
+  'DIP', 'CTXSYS', 'AUDSYS',
+  'APPQOSSYS', 'APEX_PUBLIC_USER', 'ANONYMOUS',
+  'SPATIAL_CSW_ADMIN_USR', 'SYSKM',
+  'SYSMAN_TYPES', 'MGMT_VIEW',
+  'EUS_ENGINE_USER', 'EXFSYS', 'SYSMAN_APM'
+  )
+  )
+  AND privilege NOT IN ('UNLIMITED TABLESPACE'
+                   , 'REFERENCES', 'INDEX', 'SYSDBA', 'SYSOPER'
+  )
+  ORDER  BY 1, 2;
+  If any administrative privileges have been assigned directly to a database
+  account, this is a finding.
+  (The list of special accounts that are excluded from this requirement may not
+  be complete.  It is expected that the DBA will edit the list to suit local
+  circumstances, adding other special accounts as necessary, and removing any
+  that are not supposed to be in use in the Oracle deployment that is under
+  review.)"
+  tag "fix": "Create roles for administrative function assignments. Assign the
+  necessary privileges for the administrative functions to a role.  Do not assign
+  administrative privileges directly to users, except for those that Oracle does
+  not permit to be assigned via roles."
+
+  sql = oracledb_session(user: input('user'), password: input('password'), host: input('host'), service: input('service'), sqlplus_bin: input('sqlplus_bin'))
+
+  database_accounts_with_administrative_privs = sql.query("SELECT grantee
+  FROM   dba_sys_privs
+  WHERE  grantee IN
+  (
+  SELECT username
+  FROM   dba_users
+  WHERE  username NOT IN
+  (
+  'XDB', 'SYSTEM', 'SYS', 'LBACSYS',
+  'DVSYS', 'DVF', 'SYSMAN_RO',
+  'SYSMAN_BIPLATFORM', 'SYSMAN_MDS',
+  'SYSMAN_OPSS', 'SYSMAN_STB', 'DBSNMP',
+  'SYSMAN', 'APEX_040200', 'WMSYS',
+  'SYSDG', 'SYSBACKUP', 'SPATIAL_WFS_ADMIN_USR',
+  'SPATIAL_CSW_ADMIN_US', 'GSMCATUSER',
+  'OLAPSYS', 'SI_INFORMTN_SCHEMA',
+  'OUTLN', 'ORDSYS', 'ORDDATA', 'OJVMSYS',
+  'ORACLE_OCM', 'MDSYS', 'ORDPLUGINS',
+  'GSMADMIN_INTERNAL', 'MDDATA', 'FLOWS_FILES',
+  'DIP', 'CTXSYS', 'AUDSYS',
+  'APPQOSSYS', 'APEX_PUBLIC_USER', 'ANONYMOUS',
+  'SPATIAL_CSW_ADMIN_USR', 'SYSKM',
+  'SYSMAN_TYPES', 'MGMT_VIEW',
+  'EUS_ENGINE_USER', 'EXFSYS', 'SYSMAN_APM', 'RDSADMIN'
+  )
+  )
+  AND privilege NOT IN ('UNLIMITED TABLESPACE'
+                   , 'REFERENCES', 'INDEX', 'SYSDBA', 'SYSOPER'
+  );").column('grantee').uniq
+
+  describe 'Database accounts with administrative privileges' do
+    subject { database_accounts_with_administrative_privs }
+    it { should be_empty }
+  end
+end
+
 end
