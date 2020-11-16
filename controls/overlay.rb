@@ -41,6 +41,13 @@ include_controls 'oracle-database-12c-stig-baseline' do
       end
     end
 
+    control 'V-61493' do
+      impact 0.0
+      describe 'This control is not applicable on oracle within aws rds, as aws manages the operating system in which the oracle database is running on' do
+        skip 'This control is not applicable on oracle within aws rds, as aws manages the operating system in which the oracle database is running on'
+      end
+    end
+
     control 'V-61511' do
       impact 0.0
       describe 'This control is not applicable on oracle within aws rds, as aws manages the operating system in which the oracle database is running on' do
@@ -49,6 +56,13 @@ include_controls 'oracle-database-12c-stig-baseline' do
     end
 
     control 'V-61515' do
+      impact 0.0
+      describe 'This control is not applicable on oracle within aws rds, as aws manages the operating system in which the oracle database is running on' do
+        skip 'This control is not applicable on oracle within aws rds, as aws manages the operating system in which the oracle database is running on'
+      end
+    end
+
+    control 'V-61523' do
       impact 0.0
       describe 'This control is not applicable on oracle within aws rds, as aws manages the operating system in which the oracle database is running on' do
         skip 'This control is not applicable on oracle within aws rds, as aws manages the operating system in which the oracle database is running on'
@@ -84,6 +98,13 @@ include_controls 'oracle-database-12c-stig-baseline' do
     end
 
     control 'V-61965' do
+      impact 0.0
+      describe 'This control is not applicable on oracle within aws rds, as aws manages the operating system in which the oracle database is running on' do
+        skip 'This control is not applicable on oracle within aws rds, as aws manages the operating system in which the oracle database is running on'
+      end
+    end
+
+    control 'V-61675' do
       impact 0.0
       describe 'This control is not applicable on oracle within aws rds, as aws manages the operating system in which the oracle database is running on' do
         skip 'This control is not applicable on oracle within aws rds, as aws manages the operating system in which the oracle database is running on'
