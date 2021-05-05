@@ -1,137 +1,148 @@
 # aws-rds-oracle-database-12c-stig-baseline
 
-InSpec profile testing secure configuration of AWS Oracle 12c Database Server.
+InSpec Profile to validate the secure configuration of aws-rds-infrastructure-cis-baseline, against [DISA's](https://iase.disa.mil/stigs/Pages/index.aspx) Oracle Database 12c STIG Ver 2, Rel 1
 
-## Description
+## Getting Started  
+It is intended and recommended that InSpec run this profile from a __"runner"__ host (such as a DevOps orchestration server, an administrative management system, or a developer's workstation/laptop) against the target remotely over __ssh__.
 
-This InSpec compliance profile is a collection of automated tests for secure configuration of the AWS Oracle 12c Database Server.
+The latest versions and installation options are available at the [InSpec](http://inspec.io/) site.
 
-InSpec is an open-source run-time framework and rule language used to specify compliance, security, and policy requirements for testing any node in your infrastructure.
+## Tailoring to Your Environment
+The following inputs must be configured in an inputs ".yml" file for the profile to run correctly for your specific environment. More information about InSpec inputs can be found in the [InSpec Profile Documentation](https://www.inspec.io/docs/reference/profiles/).
 
-## Requirements
-
-- [ruby](https://www.ruby-lang.org/en/) version 2.4  or greater
-- [InSpec](http://inspec.io/) version 3.x or greater
-    - Install via ruby gem: `gem install inspec`
-
-
-## Usage
-InSpec makes it easy to run tests wherever you need. More options listed here: [InSpec cli](http://inspec.io/docs/reference/cli/)
-
-The following attributes must be configured in an attributes file for the profile to run correctly. More information about InSpec attributes can be found in the [InSpec Profile Documentation](https://www.inspec.io/docs/reference/profiles/).
-
-### Configuring the inputs in your inputs.yml file
 ```yaml
-# description: Username Oracle DB (e.g., 'system')
+# username Oracle DB
 user: ''
 
-# description: Password Oracle DB (e.g., 'xvIA7zonxGM=1')
+# password Oracle DB
 password: ''
 
-# description: Hostname Oracle DB (e.g., 'localhost')
+# hostname Oracle DB
 host: ''
 
-# description: Service name Oracle DB (e.g., 'ORCLCDB')
+# service name Oracle DB
 service: ''
 
-# description: Location of sqlplus tool (e.g., '/opt/oracle/product/12.2.0.1/dbhome_1/bin/sqlplus')
+# Location of sqlplus tool
 sqlplus_bin: ''
 
-# description: Set to true if standard auditing is used
-standard_auditing_used: false 
+# Set to true if standard auditing is used
+standard_auditing_used: true
 
-# description: Set to true if unified auditing is used
+# Set to true if unified auditing is used
 unified_auditing_used: false
 
-# description: List of allowed database links
+# List of allowed database links
 allowed_db_links: []
 
-# description: List of allowed database admins
+# List of allowed database admins
 allowed_dbadmin_users: []
 
-# description: List of users allowed access to PUBLIC
+# List of users allowed access to PUBLIC
 users_allowed_access_to_public: []
 
-# description: List of users allowed the dba role
+# List of users allowed the dba role
 allowed_users_dba_role: []
 
-# description: List of users allowed the system tablespace
+# List of users allowed the system tablespace
 allowed_users_system_tablespace: []
 
-# description: List of application owners
+# List of application owners
 allowed_application_owners: []
 
-# description: List of allowed unlocked Oracle db accounts
+# List of allowed unlocked oracle db accounts
 allowed_unlocked_oracledb_accounts: []
 
-# description: List of users allowed access to the dictionary table
+# List of users allowed access to the dictionary table
 users_allowed_access_to_dictionary_table: []
 
-# description: List of users allowed admin privileges
+# List of users allowed admin privileges
 allowed_users_with_admin_privs: []
 
-# description: List of users allowed audit access
+# List of users allowed audit access
 allowed_audit_users: []
 
-# description: List of allowed dba object owners
+# List of allowed dba object owners
 allowed_dbaobject_owners: []
 
-# description: List of allowed Oracle db components
+# List of allowed oracle db components
 allowed_oracledb_components: []
 
-# description: List of Oracle db components allowed to be intregrated into the dbms
+# List of oracle db components allowed to be intregrated into the dbms
 allowed_oracledb_components_integrated_into_dbms: []
 
-# description: List of allowed Oracle dba's
+# List of allowed oracle dba's
 oracle_dbas: []
 ```
 
-### Run with remote profile:
-You may choose to run the profile via a remote url, this has the advantage of always being up to date.
-The disadvantage is you may wish to modify controls, which is only possible when downloaded.
-Also, the remote profile is unintuitive for passing in attributes, which modify the default values of the profile.
-``` bash
-inspec exec https://github.com/mitre/aws-rds-oracle-database-12c-stig-baseline.git
+## Configuring your AWS CLI
+
+The right system environment variables must be set with your AWS region and credentials and session token to use the AWS CLI and InSpec resources in the AWS environment. InSpec supports the following standard AWS variables:
+
+```
+# Set required ENV variables
+$ export AWS_ACCESS_KEY_ID=key-id
+$ export AWS_SECRET_ACCESS_KEY=access-key
+$ export AWS_SESSION_TOKEN=session_token
+$ export AWS_REGION=us-west-1
 ```
 
-Another option is to download the profile then run it, this allows you to edit specific instructions and view the profile code.
-``` bash
-# Clone Inspec Profile
-$ git clone https://github.com/mitre/aws-rds-oracle-database-12c-stig-baseline.git
+# Running This Baseline Directly from Github
 
-# Run profile locally (assuming you have not changed directories since cloning)
-# This will display compliance level at the prompt, and generate a JSON file 
-# for export called output.json
-$ inspec exec aws-rds-oracle-database-12c-stig-baseline --input-file inputs.yml --reporter cli json:output.json
-
-# Run profile with custom settings defined in attributes.yml against the target 
-# server example.com. 
-$ inspec exec aws-rds-oracle-database-12c-stig-baseline -t ssh://user@password:example.com --input-file inputs.yml --reporter cli json:output.json
-
-# Run profile with: custom attributes, ssh keyed into a custom target, and sudo.
-$ inspec exec aws-rds-oracle-database-12c-stig-baseline -t ssh://user@hostname -i /path/to/key --sudo --input-file inputs.yml --reporter cli json:output.json
+```
+# How to run
+inspec exec https://github.com/mitre/aws-rds-oracle-database-12c-stig-baseline/archive/master.tar.gz -t aws:// --input-file=<path_to_your_inputs_file/name_of_your_inputs_file.yml> --reporter=cli json:<path_to_your_output_file/name_of_your_output_file.json>
 ```
 
-## Contributors + Kudos
+### Different Run Options
 
-- Aaron Lippold
-- Eugene Aronne
-- The MITRE InSpec Team
+  [Full exec options](https://docs.chef.io/inspec/cli/#options-3)
 
-## License and Author
+## Running This Baseline from a local Archive copy 
 
-### Authors
-- Author:: Mohamed El-Sharkawi
+If your runner is not always expected to have direct access to GitHub, use the following steps to create an archive bundle of this baseline and all of its dependent tests:
 
-### License  
+(Git is required to clone the InSpec profile using the instructions below. Git can be downloaded from the [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) site.)
 
-* This project is licensed under the terms of the Apache license 2.0 (apache-2.0)
+When the __"runner"__ host uses this profile baseline for the first time, follow these steps: 
+
+```
+mkdir profiles
+cd profiles
+git clone https://github.com/mitre/aws-rds-oracle-database-12c-stig-baseline
+inspec archive aws-rds-oracle-database-12c-stig-baseline
+inspec exec <name of generated archive> -t aws:// --input-file=<path_to_your_inputs_file/name_of_your_inputs_file.yml> --reporter=cli json:<path_to_your_output_file/name_of_your_output_file.json>
+```
+For every successive run, follow these steps to always have the latest version of this baseline:
+
+```
+cd aws-rds-oracle-database-12c-stig-baseline
+git pull
+cd ..
+inspec archive aws-rds-oracle-database-12c-stig-baseline --overwrite
+inspec exec <name of generated archive> -t aws:// --input-file=<path_to_your_inputs_file/name_of_your_inputs_file.yml> --reporter=cli json:<path_to_your_output_file/name_of_your_output_file.json>
+```
+
+## Viewing the JSON Results
+
+The JSON results output file can be loaded into __[heimdall-lite](https://heimdall-lite.mitre.org/)__ for a user-interactive, graphical view of the InSpec results. 
+
+The JSON InSpec results file may also be loaded into a __[full heimdall server](https://github.com/mitre/heimdall)__, allowing for additional functionality such as to store and compare multiple profile runs.
+
+## Authors
+* Mohamed El-Sharkawi - [HackerShark](https://github.com/HackerShark)
+
+## Special Thanks 
+* Shivani Karikar - [karikarshivani](https://github.com/karikarshivani)
+
+## Contributing and Getting Help
+To report a bug or feature request, please open an [issue](https://github.com/mitre/aws-rds-oracle-database-12c-stig-baseline/issues/new).
 
 ### NOTICE  
 
-© 2018 The MITRE Corporation.  
+© 2018-2020 The MITRE Corporation.
 
-Approved for Public Release; Distribution Unlimited. Case Number 18-3678.  
+Approved for Public Release; Distribution Unlimited. Case Number 18-3678.
 
 ## NOTICE  
 
