@@ -158,4 +158,4 @@ For further information, please contact The MITRE Corporation, Contracts Managem
 
 ## NOTICE  
 
-CIS Benchmarks are published by the Center for Internet Security (CIS), see: https://www.cisecurity.org/cis-benchmarks/.   
+DISA STIGs are published by DISA IASE, see: https://iase.disa.mil/Pages/privacy_policy.aspx
