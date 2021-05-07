@@ -75,23 +75,11 @@ allowed_oracledb_components_integrated_into_dbms: []
 oracle_dbas: []
 ```
 
-## Configuring your AWS CLI
-
-The right system environment variables must be set with your AWS region and credentials and session token to use the AWS CLI and InSpec resources in the AWS environment. InSpec supports the following standard AWS variables:
-
-```
-# Set required ENV variables
-$ export AWS_ACCESS_KEY_ID=key-id
-$ export AWS_SECRET_ACCESS_KEY=access-key
-$ export AWS_SESSION_TOKEN=session_token
-$ export AWS_REGION=us-west-1
-```
-
 # Running This Baseline Directly from Github
 
 ```
 # How to run
-inspec exec https://github.com/mitre/aws-rds-oracle-database-12c-stig-baseline/archive/master.tar.gz -t aws:// --input-file=<path_to_your_inputs_file/name_of_your_inputs_file.yml> --reporter=cli json:<path_to_your_output_file/name_of_your_output_file.json>
+inspec exec https://github.com/mitre/aws-rds-oracle-database-12c-stig-baseline/archive/master.tar.gz -t ssh:// --input-file=<path_to_your_inputs_file/name_of_your_inputs_file.yml> --reporter=cli json:<path_to_your_output_file/name_of_your_output_file.json>
 ```
 
 ### Different Run Options
@@ -111,7 +99,7 @@ mkdir profiles
 cd profiles
 git clone https://github.com/mitre/aws-rds-oracle-database-12c-stig-baseline
 inspec archive aws-rds-oracle-database-12c-stig-baseline
-inspec exec <name of generated archive> -t aws:// --input-file=<path_to_your_inputs_file/name_of_your_inputs_file.yml> --reporter=cli json:<path_to_your_output_file/name_of_your_output_file.json>
+inspec exec <name of generated archive> -t ssh:// --input-file=<path_to_your_inputs_file/name_of_your_inputs_file.yml> --reporter=cli json:<path_to_your_output_file/name_of_your_output_file.json>
 ```
 For every successive run, follow these steps to always have the latest version of this baseline:
 
@@ -120,7 +108,7 @@ cd aws-rds-oracle-database-12c-stig-baseline
 git pull
 cd ..
 inspec archive aws-rds-oracle-database-12c-stig-baseline --overwrite
-inspec exec <name of generated archive> -t aws:// --input-file=<path_to_your_inputs_file/name_of_your_inputs_file.yml> --reporter=cli json:<path_to_your_output_file/name_of_your_output_file.json>
+inspec exec <name of generated archive> -t ssh:// --input-file=<path_to_your_inputs_file/name_of_your_inputs_file.yml> --reporter=cli json:<path_to_your_output_file/name_of_your_output_file.json>
 ```
 
 ## Viewing the JSON Results
