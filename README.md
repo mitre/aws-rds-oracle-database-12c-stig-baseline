@@ -1,6 +1,6 @@
 # aws-rds-oracle-database-12c-stig-baseline
 
-InSpec Profile to validate the secure configuration of aws-rds-infrastructure-cis-baseline, against [DISA's](https://iase.disa.mil/stigs/Pages/index.aspx) Oracle Database 12c STIG Ver 2, Rel 1
+InSpec Profile to validate the secure configuration of AWS RDS instance of Oracle 12c, against [DISA's](https://iase.disa.mil/stigs/Pages/index.aspx) Oracle Database 12c STIG Ver 2, Rel 1
 
 ## Getting Started  
 It is intended and recommended that InSpec run this profile from a __"runner"__ host (such as a DevOps orchestration server, an administrative management system, or a developer's workstation/laptop) against the target remotely over __ssh__.
